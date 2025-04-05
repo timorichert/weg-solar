@@ -15,10 +15,10 @@ st.markdown('Ihr seid eine WEG und wollt eine Solaranlage bauen, wisst aber nich
 st.divider()
 
 
-st.sidebar.button('Einführung')
-st.sidebar.button('Haus und Solaranlage')
-st.sidebar.button('Konzeptvergleich')
-st.sidebar.button('So geht''s weiter')
+#st.sidebar.button('Einführung')
+#st.sidebar.button('Haus und Solaranlage')
+#st.sidebar.button('Konzeptvergleich')
+#st.sidebar.button('So geht''s weiter')
 
 
 st.header('Euer Haus', anchor='haus')
