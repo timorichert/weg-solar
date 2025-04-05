@@ -2,19 +2,20 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import numpy as np
+import numpy_financial as npf
 from pandas.core.strings.accessor import cat_core
 
 nf = "{:.0f}"
 nfp = "{:.0f}"
 
-
-
-
-
 st.title('Solar für _Wohnungs-eigentümergemeinschaften_')
 st.markdown('Ihr seid eine WEG und wollt eine Solaranlage bauen, wisst aber nicht ob das Sinn macht oder wie das geht? :sun_with_face: Dann seid ihr hier richtig! :smile: Mit diesem einfachen Rechner könnte ihr zügig analysieren ob eine Solaranlage für euch Sinn macht. Los geht''s.. :running:')
-st.divider()
 
+st.badge("ACHTUNG! Dies ist aktuell nur ein Prototyp mit begrenzter Funktionsfähigkeit.", color="red")
+st.badge("Einiges funktioniert noch nicht (Schätzung Solar-Output, Rechnung Eigenverbrauch und Weiteres)", color="red")
+st.badge("Einige Funktion fehlen und sollen noch kommen (z.B. ""Export als Beschlußvorlage"")", color="red")
+st.badge("Vieles ist noch nicht abschließend sauber geprüft (im Prinzip alles :smile:)", color="red")
+st.badge("Schreibt mir gerne Ideen und Feedback: t.p.richert@gmail.com.", color="red")
 
 #st.sidebar.button('Einführung')
 #st.sidebar.button('Haus und Solaranlage')
@@ -38,9 +39,9 @@ st.write('Ihr verbraucht in eurem Haus ca. __' + str(nf.format(power_consumption
 st.header('Eure zukünftige Photovoltaik-Anlage', anchor='anlage')
 
 st.number_input('Postleitzahl (zur Abschätzung der Sonneneinstrahlung)', min_value=0, max_value=99999, key='plz')
-capacity_kWp = st.number_input('Kapazität der Anlage [kWp]', min_value=0, max_value=200, value=15, key='capacity_kWp')
+capacity_kWp = st.number_input('Kapazität der Anlage [kWp]', min_value=0, max_value=200, value=21, key='capacity_kWp')
 st.number_input('Anstellwinkel der Anlage [Grad]', min_value=0, max_value=200, value=10, key='angle_deg', help='Bei Flachdächern wird die Anlage typischerweise mit einem Winkel von 10 bis 15 Grad installiert. Bei Spitzdächern entspricht der Winkel dem Dachwinkel.')
-cost_specific = st.number_input('Spezifische Baukosten der Anlage [EUR/kWp] (typisch sind ca. 1000 bis 1500 EUR/kWp für eine Anlage ohne Speicher)', min_value=1000, max_value=2000, value=1500, key='specific_cost')
+cost_specific = st.number_input('Spezifische Baukosten der Anlage [EUR/kWp] (typisch sind ca. 1200 bis 1400 EUR/kWp für eine Anlage ohne Speicher)', min_value=1000, max_value=1600, value=1400, key='specific_cost')
 cost_total = cost_specific * capacity_kWp
 
 pv_production = capacity_kWp * 900 # [kWh]
@@ -89,13 +90,28 @@ st.markdown(mk_investment)
 chart_investment_x = ['(1) Ohne Solar', '(2) Volleinspeisung', 'Gemeinschaftliche Gebäudeversorgung', 'Mieterstrom']
 chart_investment_y_label = 'Investitionskosten [EUR]'
 
+cat_inv_solaranlage = "Bau Solaranlage"
+cost_inv_solaranlage = [0, cost_total, cost_total, cost_total]
+
+cat_inv_abrechnung = "Einrichtungspauschale Abrechnungsdienstleister"
+cost_inv_abrechnung = [0, 0, 2000, 2000]
+
+cat_inv_messkonzept = "Umsetzung Messkonzept"
+cost_inv_messkonzept = [0, 0, 100 * number_meters, 100 * number_meters]
+
+cost_inv_total = [0, 0, 0, 0]
+for i in range (0, 4):
+    cost_inv_total[i] = cost_inv_solaranlage[i] + cost_inv_abrechnung[i] + cost_inv_messkonzept[i]
+
+
+
 data_cost_investment = pd.DataFrame(
     {
         "index": [1,2,3,4],
         "Konzepte": ['Ohne Solar', 'Volleinspeisung', 'Gemeinschaftliche Gebäudeversorgung', ' Mieterstrom'],
-        "Umsetzung Messkonzept": [0, 0, 1000, 1000],
-        "Einrichtungspauschale Abrechnungsdienstleister": [0, 0, 2000, 2000],
-        "Bau Solaranlage": [0, cost_total, cost_total, cost_total]
+        cat_inv_messkonzept: cost_inv_messkonzept,
+        cat_inv_abrechnung: cost_inv_abrechnung,
+        cat_inv_solaranlage: cost_inv_solaranlage
     }
 )
 st.bar_chart(data=data_cost_investment, x='Konzepte', y=['Bau Solaranlage', 'Umsetzung Messkonzept', 'Einrichtungspauschale Abrechnungsdienstleister'], y_label=chart_investment_y_label, height=500)
@@ -123,7 +139,7 @@ cat_abrechnung = "Abrechnungsdienstleister"
 cost_op_abrechnung = [0, 0, 5 * 12 * number_meters, 5 * 12 * number_meters]
 
 cat_einnahmen = "Einnahmen"
-cost_op_einnahmen = [0, - einspeisung_voll * 11.5 / 100, - einspeisung_eigenverbrauch * 11.5 / 100,  - einspeisung_eigenverbrauch * 11.5 / 100]
+cost_op_einnahmen = [0, - einspeisung_voll * 11.5 / 100, - einspeisung_eigenverbrauch * 8.0 / 100,  - einspeisung_eigenverbrauch * 8.0 / 100]
 
 cost_op_total = [0, 0, 0, 0]
 for i in range (0, 4):
@@ -143,9 +159,37 @@ data_cost_operation = pd.DataFrame(
     }
 )
 st.bar_chart(data=data_cost_operation, x='Konzepte', y=[cat_op_grundgebuehr, cat_reststrom, cat_op_meters, cat_op_solarmeter, cat_abrechnung, cat_einnahmen], y_label=chart_op_y_label, height=500)
-st.write(cost_op_total)
 
 st.subheader('Bewertung')
+st.markdown('Aus den Investitionskosten und den durch die Solaranlage reduzierten Betriebskosten lassen sich nun wirtschaftliche Kenngrößen herleiten. Die Rendite der Invesition sieht wie folgt aus:')
+
+payback = [0, 0, 0, 0]
+irr_percent = [0, 0, 0, 0]
+for i in range (1, 4):
+    rel_investment_cost = cost_inv_total[i] - cost_inv_total[0]
+    rel_operating_cost = cost_op_total[i] - cost_op_total[0]
+    payback[i] = - rel_investment_cost / rel_operating_cost
+
+    cashflow = [0] * 22
+    cashflow[0] = -rel_investment_cost
+    for a in range (1, 21 + 1):
+        cashflow[a] = -rel_operating_cost
+
+    irr_percent[i] = npf.irr(cashflow) * 100
+
+#st.write(payback)
+#st.write(irr_percent)
+
+cat_econ_irr = 'Rendite [%]'
+
+chart_econ_y_label = 'Rendite [%]'
+data_econ = pd.DataFrame(
+    {
+        "Konzepte": ['Ohne Solar', 'Volleinspeisung', 'Gemeinschaftliche Gebäudeversorgung', ' Mieterstrom'],
+        cat_econ_irr: irr_percent
+    }
+)
+st.bar_chart(data=data_econ, x='Konzepte', y=[cat_econ_irr], y_label=chart_econ_y_label, height=500)
 
 
 st.header('So geht es weiter...', anchor='weiter')
