@@ -8,6 +8,10 @@ from pandas.core.strings.accessor import cat_core
 nf = "{:.0f}"
 nfp = "{:.0f}"
 
+einspeiseverguetung_ve = 11.5
+einspeiseverguetung_ue = 8.0
+
+
 st.title('Solar für _Wohnungs-eigentümergemeinschaften_')
 st.markdown('Ihr seid eine WEG und wollt eine Solaranlage bauen, wisst aber nicht ob das Sinn macht oder wie das geht? :sun_with_face: Dann seid ihr hier richtig! :smile: Mit diesem einfachen Rechner könnte ihr zügig analysieren ob eine Solaranlage für euch Sinn macht. Los geht''s.. :running:')
 
@@ -77,7 +81,7 @@ st.markdown(mk)
 st.header('Wirtschaftlichkeit', anchor='wirtschaftlichkeit')
 
 st.subheader('Investitionskosten')
-mk_investment = '''Mit dem Bau einer Solaranlage tätigt ihr ein Investment, das natürlich mit Kosten verbunden ist:
+md_investment = '''Mit dem Bau einer Solaranlage tätigt ihr ein Investment, das natürlich mit Kosten verbunden ist:
 
 - **Bau Solaranlage** - Dies umfasst den Auftrag an den von euch gewählten Fachbetrieb, der die Solaranlage bauen soll. Dies umfasst Material und Installation der Solarmodule inkl. Befestigungsmittel, Wechselrichter, Verkabelung, Anschluss an das Zählerfeld und Inbetriebnahme der Anlage.
 - **Umsetzung Messkonzept** - 
@@ -85,7 +89,7 @@ mk_investment = '''Mit dem Bau einer Solaranlage tätigt ihr ein Investment, das
 
 '''
 
-st.markdown(mk_investment)
+st.markdown(md_investment)
 
 chart_investment_x = ['(1) Ohne Solar', '(2) Volleinspeisung', 'Gemeinschaftliche Gebäudeversorgung', 'Mieterstrom']
 chart_investment_y_label = 'Investitionskosten [EUR]'
@@ -116,8 +120,17 @@ data_cost_investment = pd.DataFrame(
 )
 st.bar_chart(data=data_cost_investment, x='Konzepte', y=['Bau Solaranlage', 'Umsetzung Messkonzept', 'Einrichtungspauschale Abrechnungsdienstleister'], y_label=chart_investment_y_label, height=500)
 
-st.subheader('Betriebskosten')
-st.markdown('Im Betrieb unterscheiden sich die Kosten der einzelnen Konzepte.')
+st.subheader('Betriebskosten und Einnahmen')
+md_op = '''Im Betrieb lassen sich Ausgaben und Einnahmen der Anlage wie folgt beschreiben:
+
+- **Grundgebühren Stromlieferverträge** - 
+- **Einkauf Netzstrom und Reststrom** - 
+- **Betrieb Zähler (Wohnung + Allgemeinstrom)** - 
+- **Betrieb Zähler Solaranlage** - 
+- **Einnahmen** - 
+
+'''
+st.markdown(md_op)
 
 cost_op = x = [[0 for i in range(10)] for j in range(10)]
 
