@@ -3,17 +3,15 @@ import pandas as pd
 import altair as alt
 import numpy as np
 import numpy_financial as npf
-from pandas.core.strings.accessor import cat_core
+from numpy.f2py.auxfuncs import throw_error
+# from pandas.core.strings.accessor import cat_core
 
 ###### PARAMETERS ######
-
-mieterstromzuschlag = 2.5 # [ct/kWh]
 
 specific_production = 900 # [kWh/kWp]
 
 list_konzepte = ['Ohne Solar', 'Volleinspeisung', 'Gemeinschaftliche Gebäudeversorgung', ' Mieterstrom']
 
-einspeiseverguetung = [0, 11.5 / 100, 8.0 / 100, 8.0 / 100] # [EUR/kWh]
 mieterstromzuschlag = [0, 0, 0, 2.5 / 100] # [EUR/kWh]
 
 operating_cost_fraction = [0, 0.01, 0.01, 0.01]
@@ -34,9 +32,39 @@ def eigenverbrauch(capacity_kWp, power_consumption):
 def warnung(text):
     st.markdown('_:warning: **HINWEIS:** ' + text + '_')
 
-def zahlenformat(zahl):
+def zahlenformat(zahl, nks):
     # return locale.format("%.0f", zahl, grouping=True)
-    return "{:,.0f}".format(zahl)
+    return str("{:,." + str(nks) + "f}").format(zahl)
+
+def calc_einspeiseverguetung(modus, capacity_kWp):
+    if modus == "UE":
+        ev1 = 7.94
+        ev2 = 6.88
+        ev3 = 5.62
+        if capacity_kWp <= 10:
+            ev = ev1
+        elif capacity_kWp <= 40:
+            ev = (10 * ev1 + (capacity_kWp - 10) * ev2) / capacity_kWp
+        elif capacity_kWp <= 100:
+            ev = (10 * ev1 + (40 - 10) * ev2 + (capacity_kWp - 40) * ev3) / capacity_kWp
+        else:
+            ev = 0
+            throw_error("Max capacity of 100 kW exceeded.")
+    elif modus == "VE":
+        ev1 = 12.6
+        ev2 = 10.56
+        if capacity_kWp <= 10:
+            ev = ev1
+        elif capacity_kWp <= 100:
+            ev = (10 * ev1 + (capacity_kWp - 10) * ev2) / capacity_kWp
+        else:
+            ev = 0
+            throw_error("Max capacity of 100 kW exceeded.")
+    else:
+        ev = 0
+        throw_error("EV Mode unknown")
+    return ev / 100
+
 
 ###### MAIN CONTENT ######
 st.title(':sunny: Solar für _Wohnungs-eigentümergemeinschaften_')
@@ -66,7 +94,7 @@ power_base_price = st.number_input('Mittlere monatliche Grundgebühr pro Wohnung
 power_consumption = number_apartments * power_consumption_per_apartment * 1.1 # [kWh]
 cost_power_annual = power_consumption * power_price / 100 + 12 * number_meters * power_base_price
 
-st.write('Ihr verbraucht in eurem Haus ca. __' + str(zahlenformat(power_consumption)) + ' kWh__ Strom pro Jahr (inklusive zusätzlich ca. 10% für den Allgemeinstrom). Dafür bezahlt ihr mit Grundgebühren und Arbeitspreis __ca. ' + str(zahlenformat(cost_power_annual)) + ' EUR__ im Jahr.')
+st.write('Ihr verbraucht in eurem Haus ca. __' + str(zahlenformat(power_consumption, 0)) + ' kWh__ Strom pro Jahr (inklusive zusätzlich ca. 10% für den Allgemeinstrom). Dafür bezahlt ihr mit Grundgebühren und Arbeitspreis __ca. ' + str(zahlenformat(cost_power_annual, 0)) + ' EUR__ im Jahr.')
 
 st.header('Eure zukünftige Photovoltaik-Anlage', anchor='anlage')
 st.markdown('''
@@ -83,6 +111,9 @@ cost_total = cost_specific * capacity_kWp
 
 pv_production = capacity_kWp * specific_production # [kWh]
 
+einspeiseverguetung = [0, calc_einspeiseverguetung("VE", capacity_kWp), calc_einspeiseverguetung("UE", capacity_kWp), calc_einspeiseverguetung("UE", capacity_kWp)] # [EUR/kWh]
+# st.write(einspeiseverguetung)
+
 self_consumption_fraction = eigenverbrauch(capacity_kWp, power_consumption)
 self_consumption_total = pv_production * self_consumption_fraction
 autarkiegrad = self_consumption_total / power_consumption
@@ -91,8 +122,8 @@ einspeisung_voll = pv_production
 
 consumption_reststrom = power_consumption - self_consumption_total
 
-st.write('Die Solaranlage kostet euch __' + str(zahlenformat(cost_total)) + ' EUR__ und  wird __ca. ' + str(zahlenformat(pv_production)) + ' kWh__ Strom pro Jahr produzieren.')
-st.write('Bei eurem Jahresverbrauch werdet ihr davon ca. __' + str(zahlenformat(self_consumption_fraction*100)) + '% selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(zahlenformat(self_consumption_total)) + ' kWh pro Jahr. __Damit deckt ihr euren jährlichen Gesamtbedarf zu ca. ' + str(zahlenformat(autarkiegrad*100)) + '%__ ("Autkariegrad"). Den restlichen Solarstrom, also ' + str(zahlenformat(einspeisung_eigenverbrauch)) + ' kWh, speist ihr in das Stromnetz ein.')
+st.write('Die Solaranlage kostet euch __' + str(zahlenformat(cost_total, 0)) + ' EUR__ und  wird __ca. ' + str(zahlenformat(pv_production, 0)) + ' kWh__ Strom pro Jahr produzieren.')
+st.write('Bei eurem Jahresverbrauch werdet ihr davon ca. __' + str(zahlenformat(self_consumption_fraction*100, 0)) + '% selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(zahlenformat(self_consumption_total, 0)) + ' kWh pro Jahr. __Damit deckt ihr euren jährlichen Gesamtbedarf zu ca. ' + str(zahlenformat(autarkiegrad*100, 0)) + '%__ ("Autkariegrad"). Den restlichen Solarstrom, also ' + str(zahlenformat(einspeisung_eigenverbrauch, 0)) + ' kWh, speist ihr in das Stromnetz ein.')
 st.write('(Die Errechnung des Eigenverbrauchs basiert auf den Methoden des [Solarrechners](https://solar.htw-berlin.de/rechner/) der [Hochschule für Technik und Wirtschaft Berlin](https://www.htw-berlin.de/))')
 
 st.header('Nutzung des Solarstroms im Haus', anchor='nutzung')
@@ -115,7 +146,7 @@ st.subheader('Investitionskosten')
 md_investment = '''Mit dem Bau einer Solaranlage tätigt ihr ein Investment, das je nach Konzept mit folgenden geschätzten Kosten verbunden ist:
 
 - **Bau Solaranlage** - Dies umfasst den Auftrag an den von euch gewählten Fachbetrieb, der die Solaranlage bauen soll. Dies umfasst Material und Installation der Solarmodule inkl. Befestigungsmittel, Wechselrichter, Verkabelung, Anschluss an das Zählerfeld und Inbetriebnahme der Anlage.
-- **Umsetzung Messkonzept** - Dies umfasst den Austausch bzw. Einbau der Zähler. Das Messkonzept kann durch einen wettbewerblichen (wMSB) oder aber durch euren grundzuständigen (gMSB) Messstellenbetreiber umgesetzt werden. Der gMSB stellt bis zu 100 EUR pro Zähler in Rechnung, das ist der maximal erlaubte Betrag gem. REFERENZ und hier unsere Annahme. In unserem Beispiel gehen von der Realisierung eines virtuellen Summenzählers über den gMSB aus.
+- **Umsetzung Messkonzept** - Dies umfasst den Austausch bzw. Einbau der Zähler. Das Messkonzept kann durch einen wettbewerblichen (wMSB) oder aber durch euren grundzuständigen (gMSB) Messstellenbetreiber umgesetzt werden. Der gMSB stellt für eine [vorzeitigen](## "as") Zähleraustausch bis zu 100 EUR pro Zähler in Rechnung, das ist der maximal erlaubte Betrag gemäß Solarspitzengesetz und hier unsere Annahme. In unserem Beispiel gehen von der Realisierung eines virtuellen Summenzählers über den gMSB aus.
 - **Einrichtungspauschale Abrechnungsdienstleister** - Der Dienstleister, der euch bei der korrekten Bilanzierung und Abrechnung des Solarstroms unterstützt, verlangt eine Einrichtungspauschale und unterstützt dafür auch bei der sauberen Umsetzung des Messkonzeptes. 
 
 '''
@@ -155,9 +186,9 @@ md_op = '''Im Betrieb lassen sich Ausgaben und Einnahmen der Anlage wie folgt be
 
 - **Grundgebühren Stromlieferverträge** - Beim Mieterstrom habt ihr als WEG einen gemeinsamen Stromanschluss und rechnet gem. Mieterstromregeln intern ab. In allen anderen Fällen behält jeder Bewohner seinen Stromliefervertrag.
 - **Einkauf Netzstrom und Reststrom** - Je nach Eigenverbrauchsquote müsste ihr bei Mieterstrom oder GGV natürlich weniger Strom einkaufen. Bei Volleinspeisung kauft ihr weiterhin sämtlichen Strom vom Stromversorger.
-- **Betrieb Zähler für Wohnungen und Allgemeinstrom** - Bei Mieterstrom und GGV bezahlt ihr separat für den Betrieb der Zähler, während diese Gebühr bei Volleinspeisung und ohne Solaranlage in euren Stromlieferverträgen enthalten ist.
+- **Betrieb Zähler für Wohnungen und Allgemeinstrom** - Bei Mieterstrom bezahlt ihr separat für den Betrieb der Zähler, während diese Gebühr bei Volleinspeisung und GGV, wie auch ohne Anlage, in euren Stromlieferverträgen enthalten ist.
 - **Betrieb Zähler Solaranlage** - Die Solaranlage hat einen Einspeisezähler, der ebenfalls zu Buche schlägt.
-- **Einnahmen aus der Einspeisevergütung** - Für den eingespeisten Solarstrom bekommt ihr die Einspeisevergütung von ca. 8 ct/kWh.
+- **Einnahmen aus der Einspeisevergütung** - Für den eingespeisten Solarstrom bekommt ihr eine Einspeisevergütung. Diese [errechnet sich aus der Anlagengröße](https://www.finanztip.de/photovoltaik/einspeiseverguetung/). Bei GGV und Mieterstrom gibt es eine Einspeisevergütung von ''' + str(zahlenformat(einspeiseverguetung[2] * 100, 2)) + ''' ct/kWh. Bei der Volleinspeisung gibt es einen Zuschlag und ihr bekommt so ''' + str(zahlenformat(einspeiseverguetung[1] * 100, 2)) + ''' ct/kWh.
 - **Einnahmen aus Mieterstromzuschlag** - Beim Mieterstrom erhaltet für jede im Haus verbrauchte Kilowattstunde Solarstrom den Mieterstromzuschlag in Höhe von ca. 2,5 ct/kWh
 
 Im folgenden Diagramm sind eure voraussichtlichen jährlichen Ausgaben und - als negative Werte - Einnahmen dargestellt:
@@ -167,7 +198,7 @@ st.markdown(md_op)
 cost_op = x = [[0 for i in range(10)] for j in range(10)]
 
 cat_op_meters = "Betrieb Zähler (Wohnung + Allgemeinstrom)"
-cost_op_meters = [0, 0, 60 * number_meters, 60 * number_meters]
+cost_op_meters = [0, 0, 0, 60 * number_meters]
 
 cat_op_solarmeter = "Betrieb Zähler Solaranlage"
 cost_op_solarmeter = [0, 100, 100, 100]
@@ -216,7 +247,7 @@ data_cost_operation = pd.DataFrame(
 st.bar_chart(data=data_cost_operation, x='Konzepte', y=[cat_op_grundgebuehr, cat_reststrom, cat_op_anlagenbetrieb, cat_op_meters, cat_op_solarmeter, cat_abrechnung, cat_einnahmen_esv, cat_einnahmen_msz], y_label=chart_op_y_label, height=500)
 
 st.subheader('Bewertung')
-st.markdown('Aus den Investitionskosten und den durch die Solaranlage reduzierten Betriebskosten sowie den Einnahmen lassen sich nun wirtschaftliche Kenngrößen herleiten. Die Rendite der Investition sieht wie folgt aus:')
+st.markdown('Aus den Investitionskosten und den durch die Solaranlage reduzierten Betriebskosten sowie den Einnahmen lassen sich nun wirtschaftliche Kenngrößen herleiten. Die Rendite der Investition gerechnet über 20 Jahre sieht wie folgt aus:')
 
 payback = [0, 0, 0, 0]
 irr_percent = [0, 0, 0, 0]
