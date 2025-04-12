@@ -179,7 +179,62 @@ data_cost_investment = pd.DataFrame(
         cat_inv_solaranlage: cost_inv_solaranlage
     }
 )
-st.bar_chart(data=data_cost_investment, x='Konzepte', y=['Bau Solaranlage', 'Umsetzung Messkonzept', 'Einrichtungspauschale Abrechnungsdienstleister'], y_label=chart_investment_y_label, height=500)
+st.bar_chart(data=data_cost_investment, x='Konzepte', y=[cat_inv_solaranlage, cat_inv_messkonzept, cat_inv_abrechnung], y_label=chart_investment_y_label, height=500)
+
+
+
+st.write(data_cost_investment)
+
+investment_data_pd2 = pd.DataFrame(
+    data=[{
+            "Konzept": 'Ohne Solar',
+            "Umsetzung Messkonzept": 0,
+            "Einrichtungspauschale Abrechnungsdienstleister": 0,
+            "Bau Solaranlage": 0
+        },{
+            "Konzept": 'Volleinspeisung',
+            "Umsetzung Messkonzept": 0,
+            "Einrichtungspauschale Abrechnungsdienstleister": 0,
+            "Bau Solaranlage": cost_total
+        }, {
+            "Konzept": 'Gemeinschaftliche Gebäudeversorgung',
+            "Umsetzung Messkonzept": 1000,
+            "Einrichtungspauschale Abrechnungsdienstleister": 2000,
+            "Bau Solaranlage": cost_total
+        },{
+            "Konzept": 'Mieterstrom',
+            "Umsetzung Messkonzept": 1000,
+            "Einrichtungspauschale Abrechnungsdienstleister": 2000,
+            "Bau Solaranlage": cost_total
+    }]
+)
+st.write(investment_data_pd2)
+
+chart = (
+   alt.Chart(data_cost_investment)
+   .mark_bar()
+   .encode(
+       x='split(datum.Konzepte, " ")',
+       y=cat_inv_solaranlage,
+       order=alt.Order(
+           'index',
+           sort='ascending'
+       )
+   )
+).configure_axisX(
+    labelAngle=0,
+    labelLimit=200,
+    labelFontSize=15,
+)
+
+
+st.altair_chart(chart)
+
+
+
+
+
+
 
 st.subheader('Betriebskosten und Einnahmen')
 md_op = '''Im Betrieb lassen sich Ausgaben und Einnahmen der Anlage wie folgt beschreiben:
