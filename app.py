@@ -185,7 +185,7 @@ cost_inv_total = [0, 0, 0, 0]
 for i in range (0, 4):
     cost_inv_total[i] = cost_inv_solaranlage[i] + cost_inv_abrechnung[i] + cost_inv_messkonzept[i]
 
-chart_data_investment = pd.DataFrame({'Konzept': ['Ohne Solar', 'Ohne Solar', 'Ohne Solar',
+chart_inv_data = pd.DataFrame({'Konzept': ['Ohne Solar', 'Ohne Solar', 'Ohne Solar',
                                                 'Volleinspeisung','Volleinspeisung','Volleinspeisung',
                                                 'Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung',
                                                 'Mieterstrom','Mieterstrom','Mieterstrom'],
@@ -200,7 +200,7 @@ chart_data_investment = pd.DataFrame({'Konzept': ['Ohne Solar', 'Ohne Solar', 'O
 
 alt.renderers.set_embed_options(format_locale="de-DE", time_format_locale="de-DE")
 chart_inv = (
-   alt.Chart(chart_data_investment)
+   alt.Chart(chart_inv_data)
    .mark_bar()
    .encode(
        x=alt.X('Konzept:N', sort=[]),
@@ -267,9 +267,8 @@ cost_op_total = [0, 0, 0, 0]
 for i in range (0, 4):
     cost_op_total[i] = cost_op_meters[i] + cost_op_solarmeter[i] + cost_op_grundgebuehr[i] + cost_op_reststrom[i] + cost_op_anlagenbetrieb[i] + cost_op_abrechnung[i] + cost_op_einnahmen_esv[i] + cost_op_einnahmen_msz[i]
 
-
 cost_op_array = one_dim_list(transpose_list([cost_op_meters, cost_op_solarmeter, cost_op_grundgebuehr, cost_op_reststrom, cost_op_anlagenbetrieb, cost_op_abrechnung, cost_op_einnahmen_esv, cost_op_einnahmen_msz]))
-chart_data_operation = pd.DataFrame({'Konzept': ['Ohne Solar', 'Ohne Solar', 'Ohne Solar','Ohne Solar', 'Ohne Solar', 'Ohne Solar','Ohne Solar', 'Ohne Solar',
+chart_op_data = pd.DataFrame({'Konzept': ['Ohne Solar', 'Ohne Solar', 'Ohne Solar', 'Ohne Solar', 'Ohne Solar', 'Ohne Solar', 'Ohne Solar', 'Ohne Solar',
                                                 'Volleinspeisung','Volleinspeisung','Volleinspeisung','Volleinspeisung','Volleinspeisung','Volleinspeisung','Volleinspeisung','Volleinspeisung',
                                                 'Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung',
                                                 'Mieterstrom','Mieterstrom','Mieterstrom','Mieterstrom','Mieterstrom','Mieterstrom','Mieterstrom','Mieterstrom'],
@@ -279,8 +278,8 @@ chart_data_operation = pd.DataFrame({'Konzept': ['Ohne Solar', 'Ohne Solar', 'Oh
                                                   cat_op_meters, cat_op_solarmeter, cat_op_grundgebuehr, cat_reststrom, cat_op_anlagenbetrieb, cat_op_abrechnung, cat_op_einnahmen_esv, cat_op_einnahmen_msz],
                                     'Kosten': cost_op_array})
 
-chart_cost_op = (
-   alt.Chart(chart_data_operation)
+chart_op = (
+   alt.Chart(chart_op_data)
    .mark_bar()
    .encode(
        x=alt.X('Konzept:N', sort=[]),
@@ -295,14 +294,10 @@ chart_cost_op = (
 ).properties(
     height=400
 )
-st.altair_chart(chart_cost_op)
-
-
-
-
+st.altair_chart(chart_op)
 
 st.subheader('Bewertung')
-st.markdown('Aus den Investitionskosten und den durch die Solaranlage reduzierten Betriebskosten sowie den Einnahmen lassen sich nun wirtschaftliche Kenngrößen herleiten. Die Rendite der Investition gerechnet über 20 Jahre sieht wie folgt aus:')
+st.markdown('Aus den Investitionskosten und den durch die Solaranlage reduzierten Betriebskosten sowie den Einnahmen lassen sich nun wirtschaftliche Kenngrößen herleiten.')
 
 ###### Calculate Economics ######
 
@@ -320,31 +315,48 @@ for i in range (1, 4):
 
     irr_percent[i] = npf.irr(cashflow) * 100
 
-#st.write(payback)
-#st.write(irr_percent)
+###### Bewertung - Rendite ######
 
-cat_econ_irr = 'Rendite'
-chart_econ_y_label = 'Rendite [%]'
-data_econ_irr = pd.DataFrame(
-    {
-        "Konzepte": list_konzepte,
-        cat_econ_irr: irr_percent
-    }
+st.markdown('Die Rendite der Investition - gerechnet über 20 Jahre - sieht wie folgt aus:')
+
+chart_irr_data = pd.DataFrame({'Konzept': ['Ohne Solar','Volleinspeisung','Gemeinschaftliche Gebäudeversorgung','Mieterstrom'],
+                                    'Rendite': irr_percent})
+chart_irr = (
+   alt.Chart(chart_irr_data)
+   .mark_bar()
+   .encode(
+       x=alt.X('Konzept:N', sort=[]),
+       y=alt.Y('Rendite:Q', sort=[], title='Rendite [%]')
+   )
+).configure_axisX(
+    labelAngle=0,
+    labelLimit=200,
+    labelFontSize=12,
+).properties(
+    height=300
 )
-st.bar_chart(data=data_econ_irr, x='Konzepte', y=[cat_econ_irr], y_label=chart_econ_y_label, height=350)
+st.altair_chart(chart_irr)
 
+###### Bewertung - Amortisationsdauer ######
 
-st.markdown('Und wenn man Investition zu der Ersparnis an Betriebskosten ins Verhältnis setzt ergibt sich die Amortisationsdauer wie folgt:')
-
-cat_econ_payback = 'Amortisationsdauer'
-chart_econ_payback_y_label = 'Amortisationsdauer [a]'
-data_econ_pb = pd.DataFrame(
-    {
-        "Konzepte": list_konzepte,
-        cat_econ_payback: payback
-    }
+st.markdown('Und wenn man Investition zu der Ersparnis an Betriebskosten ins Verhältnis setzt ergibt sich die Amortisationsdauer (ohne Abzinsung) wie folgt:')
+chart_payback_data = pd.DataFrame({'Konzept': ['Ohne Solar','Volleinspeisung','Gemeinschaftliche Gebäudeversorgung','Mieterstrom'],
+                                    'Rendite': payback})
+chart_payback = (
+   alt.Chart(chart_payback_data)
+   .mark_bar()
+   .encode(
+       x=alt.X('Konzept:N', sort=[]),
+       y=alt.Y('Rendite:Q', sort=[], title='Amortisationsdauer [Jahre]')
+   )
+).configure_axisX(
+    labelAngle=0,
+    labelLimit=200,
+    labelFontSize=12,
+).properties(
+    height=300
 )
-st.bar_chart(data=data_econ_pb, x='Konzepte', y=[cat_econ_payback], y_label=chart_econ_payback_y_label, height=350)
+st.altair_chart(chart_payback)
 
 st.header('Wie setzt ihr es um?', anchor='umsetzung')
 
