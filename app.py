@@ -16,6 +16,13 @@ mieterstromzuschlag = [0, 0, 0, 2.5 / 100] # [EUR/kWh]
 
 operating_cost_fraction = [0, 0.01, 0.01, 0.01]
 
+email = 'info@wegsolar.de'
+
+st.set_page_config(
+    page_title="wegsolar.de | Solar für Wohnungseigentümergemeinschaften",
+    page_icon="sunny"
+)
+
 ###### FUNCTIONS ######
 
 def eigenverbrauch(capacity_kWp, power_consumption):
@@ -65,6 +72,13 @@ def calc_einspeiseverguetung(modus, capacity_kWp):
         throw_error("EV Mode unknown")
     return ev / 100
 
+def transpose_list(matrix):
+    return [[row[i] for row in matrix] for i in range(len(matrix[0]))]
+
+def one_dim_list(two_dim):
+    one_dim_list = [n for one_dim in two_dim for n in one_dim]
+    return one_dim_list
+
 
 ###### MAIN CONTENT ######
 st.title(':sunny: Solar für _Wohnungs-eigentümergemeinschaften_')
@@ -73,7 +87,7 @@ st.markdown('Ihr seid eine WEG und wollt eine Solaranlage bauen, wisst aber nich
 st.badge("ACHTUNG! Dies ist aktuell nur ein Prototyp mit begrenzter Funktionsfähigkeit.", color="red")
 st.badge("Einiges funktioniert noch nicht (Schätzung Solar-Output als Funktion der Modulausrichtung, etc.)", color="red")
 st.badge("Vieles ist noch nicht abschließend sauber geprüft...", color="red")
-st.badge("Schreibt mir gerne Ideen und Feedback: t.p.richert@gmail.com.", color="red")
+st.badge("Schreibt mir gerne Ideen und Feedback: " + email + ".", color="red")
 
 #st.sidebar.button('Einführung')
 #st.sidebar.button('Haus und Solaranlage')
@@ -91,10 +105,10 @@ number_meters = number_apartments + 1
 power_price = st.number_input('Mittlerer Strompreis mit eurem Stromversorgungsvertrag [ct/kWh]:', min_value=20, max_value=40, value=32, key='power_price')
 power_base_price = st.number_input('Mittlere monatliche Grundgebühr pro Wohnung für eure Stromversorgungsverträge [EUR/Monat]:', min_value=10, max_value=30, value=20, key='power_base_price')
 
-power_consumption = number_apartments * power_consumption_per_apartment * 1.1 # [kWh]
-cost_power_annual = power_consumption * power_price / 100 + 12 * number_meters * power_base_price
+power_consumption_total = number_apartments * power_consumption_per_apartment * 1.1 # [kWh]
+cost_power_annual = power_consumption_total * power_price / 100 + 12 * number_meters * power_base_price
 
-st.write('Ihr verbraucht in eurem Haus ca. __' + str(zahlenformat(power_consumption, 0)) + ' kWh__ Strom pro Jahr (inklusive zusätzlich ca. 10% für den Allgemeinstrom). Dafür bezahlt ihr mit Grundgebühren und Arbeitspreis __ca. ' + str(zahlenformat(cost_power_annual, 0)) + ' EUR__ im Jahr.')
+st.write('Ihr verbraucht in eurem Haus ca. __' + str(zahlenformat(power_consumption_total, 0)) + ' kWh__ Strom pro Jahr (inklusive zusätzlich ca. 10% für den Allgemeinstrom). Dafür bezahlt ihr mit Grundgebühren und Arbeitspreis __ca. ' + str(zahlenformat(cost_power_annual, 0)) + ' EUR__ im Jahr.')
 
 st.header('Eure zukünftige Photovoltaik-Anlage', anchor='anlage')
 st.markdown('''
@@ -114,16 +128,17 @@ pv_production = capacity_kWp * specific_production # [kWh]
 einspeiseverguetung = [0, calc_einspeiseverguetung("VE", capacity_kWp), calc_einspeiseverguetung("UE", capacity_kWp), calc_einspeiseverguetung("UE", capacity_kWp)] # [EUR/kWh]
 # st.write(einspeiseverguetung)
 
-self_consumption_fraction = eigenverbrauch(capacity_kWp, power_consumption)
-self_consumption_total = pv_production * self_consumption_fraction
-autarkiegrad = self_consumption_total / power_consumption
-einspeisung_eigenverbrauch = pv_production - self_consumption_total
+self_consumption_fraction = eigenverbrauch(capacity_kWp, power_consumption_total)
+power_consumption_self = pv_production * self_consumption_fraction
+autarkiegrad = power_consumption_self / power_consumption_total
+
+einspeisung_eigenverbrauch = pv_production - power_consumption_self
 einspeisung_voll = pv_production
 
-consumption_reststrom = power_consumption - self_consumption_total
+power_consumption_reststrom = power_consumption_total - power_consumption_self
 
 st.write('Die Solaranlage kostet euch __' + str(zahlenformat(cost_total, 0)) + ' EUR__ und  wird __ca. ' + str(zahlenformat(pv_production, 0)) + ' kWh__ Strom pro Jahr produzieren.')
-st.write('Bei eurem Jahresverbrauch werdet ihr davon ca. __' + str(zahlenformat(self_consumption_fraction*100, 0)) + '% selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(zahlenformat(self_consumption_total, 0)) + ' kWh pro Jahr. __Damit deckt ihr euren jährlichen Gesamtbedarf zu ca. ' + str(zahlenformat(autarkiegrad*100, 0)) + '%__ ("Autkariegrad"). Den restlichen Solarstrom, also ' + str(zahlenformat(einspeisung_eigenverbrauch, 0)) + ' kWh, speist ihr in das Stromnetz ein.')
+st.write('Bei eurem Jahresverbrauch werdet ihr davon ca. __' + str(zahlenformat(self_consumption_fraction*100, 0)) + '% selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(zahlenformat(power_consumption_self, 0)) + ' kWh pro Jahr. __Damit deckt ihr euren jährlichen Gesamtbedarf zu ca. ' + str(zahlenformat(autarkiegrad * 100, 0)) + '%__ ("Autkariegrad"). Den restlichen Solarstrom, also ' + str(zahlenformat(einspeisung_eigenverbrauch, 0)) + ' kWh, speist ihr in das Stromnetz ein.')
 st.write('(Die Errechnung des Eigenverbrauchs basiert auf den Methoden des [Solarrechners](https://solar.htw-berlin.de/rechner/) der [Hochschule für Technik und Wirtschaft Berlin](https://www.htw-berlin.de/))')
 
 st.header('Nutzung des Solarstroms im Haus', anchor='nutzung')
@@ -170,69 +185,37 @@ cost_inv_total = [0, 0, 0, 0]
 for i in range (0, 4):
     cost_inv_total[i] = cost_inv_solaranlage[i] + cost_inv_abrechnung[i] + cost_inv_messkonzept[i]
 
-data_cost_investment = pd.DataFrame(
-    {
-        "index": [1,2,3,4],
-        "Konzepte": list_konzepte,
-        cat_inv_messkonzept: cost_inv_messkonzept,
-        cat_inv_abrechnung: cost_inv_abrechnung,
-        cat_inv_solaranlage: cost_inv_solaranlage
-    }
-)
-st.bar_chart(data=data_cost_investment, x='Konzepte', y=[cat_inv_solaranlage, cat_inv_messkonzept, cat_inv_abrechnung], y_label=chart_investment_y_label, height=500)
+chart_data_investment = pd.DataFrame({'Konzept': ['Ohne Solar', 'Ohne Solar', 'Ohne Solar',
+                                                'Volleinspeisung','Volleinspeisung','Volleinspeisung',
+                                                'Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung',
+                                                'Mieterstrom','Mieterstrom','Mieterstrom'],
+                                    'Kategorie': ['Bau Solaranlage', 'Umsetzung Messkonzept', 'Einrichtungspauschale Abrechnungsdienstleister',
+                                                'Bau Solaranlage', 'Umsetzung Messkonzept', 'Einrichtungspauschale Abrechnungsdienstleister',
+                                                'Bau Solaranlage', 'Umsetzung Messkonzept', 'Einrichtungspauschale Abrechnungsdienstleister',
+                                                'Bau Solaranlage', 'Umsetzung Messkonzept', 'Einrichtungspauschale Abrechnungsdienstleister'],
+                                    'Kosten': [0, 0, 0,
+                                               cost_total, 0, 0,
+                                               cost_total, 1000, 2000,
+                                               cost_total, 1000, 2000]})
 
-
-
-st.write(data_cost_investment)
-
-investment_data_pd2 = pd.DataFrame(
-    data=[{
-            "Konzept": 'Ohne Solar',
-            "Umsetzung Messkonzept": 0,
-            "Einrichtungspauschale Abrechnungsdienstleister": 0,
-            "Bau Solaranlage": 0
-        },{
-            "Konzept": 'Volleinspeisung',
-            "Umsetzung Messkonzept": 0,
-            "Einrichtungspauschale Abrechnungsdienstleister": 0,
-            "Bau Solaranlage": cost_total
-        }, {
-            "Konzept": 'Gemeinschaftliche Gebäudeversorgung',
-            "Umsetzung Messkonzept": 1000,
-            "Einrichtungspauschale Abrechnungsdienstleister": 2000,
-            "Bau Solaranlage": cost_total
-        },{
-            "Konzept": 'Mieterstrom',
-            "Umsetzung Messkonzept": 1000,
-            "Einrichtungspauschale Abrechnungsdienstleister": 2000,
-            "Bau Solaranlage": cost_total
-    }]
-)
-st.write(investment_data_pd2)
-
-chart = (
-   alt.Chart(data_cost_investment)
+alt.renderers.set_embed_options(format_locale="de-DE", time_format_locale="de-DE")
+chart_inv = (
+   alt.Chart(chart_data_investment)
    .mark_bar()
    .encode(
-       x='split(datum.Konzepte, " ")',
-       y=cat_inv_solaranlage,
-       order=alt.Order(
-           'index',
-           sort='ascending'
-       )
+       x=alt.X('Konzept:N', sort=[]),
+       y=alt.Y('Kosten:Q', sort=[], title='Investitionskosten [EUR]'),
+       color=alt.Color("Kategorie:N", legend=alt.Legend(
+           orient='bottom'))
    )
 ).configure_axisX(
     labelAngle=0,
     labelLimit=200,
-    labelFontSize=15,
+    labelFontSize=12,
+).properties(
+    height=400
 )
-
-
-st.altair_chart(chart)
-
-
-
-
+st.altair_chart(chart_inv)
 
 
 
@@ -263,46 +246,65 @@ cost_op_grundgebuehr = [12 * power_base_price * number_meters, 12 * power_base_p
                         12 * power_base_price * number_meters, 12 * power_base_price * 1]
 
 cat_reststrom = "Einkauf Netzstrom/Reststrom"
-cost_op_reststrom = [power_consumption * power_price / 100, power_consumption * power_price / 100,
-                     consumption_reststrom * power_price / 100, consumption_reststrom * power_price / 100]
+cost_op_reststrom = [power_consumption_total * power_price / 100, power_consumption_total * power_price / 100,
+                     power_consumption_reststrom * power_price / 100, power_consumption_reststrom * power_price / 100]
 
 cat_op_anlagenbetrieb = "Betrieb Solaranlage"
-cost_op_anlagenbetrieb = np.multiply(cost_inv_total, operating_cost_fraction)
+cost_op_anlagenbetrieb = np.multiply(cost_inv_total, operating_cost_fraction).tolist()
 
-cat_abrechnung = "Abrechnungsdienstleister"
+cat_op_abrechnung = "Abrechnungsdienstleister"
 cost_op_abrechnung = [0, 0, 5 * 12 * number_meters, 5 * 12 * number_meters]
 
-cat_einnahmen_esv = "Einspeisevergütung"
+cat_op_einnahmen_esv = "Einspeisevergütung"
 einspeisung = [0, -einspeisung_voll, -einspeisung_eigenverbrauch, -einspeisung_eigenverbrauch]
-cost_op_einnahmen_esv = np.multiply(einspeisung, einspeiseverguetung)
+cost_op_einnahmen_esv = np.multiply(einspeisung, einspeiseverguetung).tolist()
 
-cat_einnahmen_msz = "Mieterstromzuschlag"
-eigenverbrauch = [0, 0, -self_consumption_total, -self_consumption_total]
-cost_op_einnahmen_msz = np.multiply(eigenverbrauch, mieterstromzuschlag)
+cat_op_einnahmen_msz = "Mieterstromzuschlag"
+eigenverbrauch = [0, 0, -power_consumption_self, -power_consumption_self]
+cost_op_einnahmen_msz = np.multiply(eigenverbrauch, mieterstromzuschlag).tolist()
 
 cost_op_total = [0, 0, 0, 0]
 for i in range (0, 4):
     cost_op_total[i] = cost_op_meters[i] + cost_op_solarmeter[i] + cost_op_grundgebuehr[i] + cost_op_reststrom[i] + cost_op_anlagenbetrieb[i] + cost_op_abrechnung[i] + cost_op_einnahmen_esv[i] + cost_op_einnahmen_msz[i]
 
-chart_op_y_label = 'Betriebskosten [EUR/a]'
-data_cost_operation = pd.DataFrame(
-    {
-        "index": [1,2,3,4],
-        "Konzepte": list_konzepte,
-        cat_op_meters: cost_op_meters,
-        cat_op_solarmeter: cost_op_solarmeter,
-        cat_op_grundgebuehr: cost_op_grundgebuehr,
-        cat_reststrom: cost_op_reststrom,
-        cat_op_anlagenbetrieb: cost_op_anlagenbetrieb,
-        cat_abrechnung: cost_op_abrechnung,
-        cat_einnahmen_esv: cost_op_einnahmen_esv,
-        cat_einnahmen_msz: cost_op_einnahmen_msz
-    }
+
+cost_op_array = one_dim_list(transpose_list([cost_op_meters, cost_op_solarmeter, cost_op_grundgebuehr, cost_op_reststrom, cost_op_anlagenbetrieb, cost_op_abrechnung, cost_op_einnahmen_esv, cost_op_einnahmen_msz]))
+chart_data_operation = pd.DataFrame({'Konzept': ['Ohne Solar', 'Ohne Solar', 'Ohne Solar','Ohne Solar', 'Ohne Solar', 'Ohne Solar','Ohne Solar', 'Ohne Solar',
+                                                'Volleinspeisung','Volleinspeisung','Volleinspeisung','Volleinspeisung','Volleinspeisung','Volleinspeisung','Volleinspeisung','Volleinspeisung',
+                                                'Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung','Gemeinschaftliche Gebäudeversorgung',
+                                                'Mieterstrom','Mieterstrom','Mieterstrom','Mieterstrom','Mieterstrom','Mieterstrom','Mieterstrom','Mieterstrom'],
+                                    'Kategorie': [cat_op_meters, cat_op_solarmeter, cat_op_grundgebuehr, cat_reststrom, cat_op_anlagenbetrieb, cat_op_abrechnung, cat_op_einnahmen_esv, cat_op_einnahmen_msz,
+                                                  cat_op_meters, cat_op_solarmeter, cat_op_grundgebuehr, cat_reststrom, cat_op_anlagenbetrieb, cat_op_abrechnung, cat_op_einnahmen_esv, cat_op_einnahmen_msz,
+                                                  cat_op_meters, cat_op_solarmeter, cat_op_grundgebuehr, cat_reststrom, cat_op_anlagenbetrieb, cat_op_abrechnung, cat_op_einnahmen_esv, cat_op_einnahmen_msz,
+                                                  cat_op_meters, cat_op_solarmeter, cat_op_grundgebuehr, cat_reststrom, cat_op_anlagenbetrieb, cat_op_abrechnung, cat_op_einnahmen_esv, cat_op_einnahmen_msz],
+                                    'Kosten': cost_op_array})
+
+chart_cost_op = (
+   alt.Chart(chart_data_operation)
+   .mark_bar()
+   .encode(
+       x=alt.X('Konzept:N', sort=[]),
+       y=alt.Y('Kosten:Q', sort=[], title='Betriebskosten [EUR/Jahr]'),
+       color=alt.Color("Kategorie:N", legend=alt.Legend(
+           orient='bottom'))
+   )
+).configure_axisX(
+    labelAngle=0,
+    labelLimit=200,
+    labelFontSize=12,
+).properties(
+    height=400
 )
-st.bar_chart(data=data_cost_operation, x='Konzepte', y=[cat_op_grundgebuehr, cat_reststrom, cat_op_anlagenbetrieb, cat_op_meters, cat_op_solarmeter, cat_abrechnung, cat_einnahmen_esv, cat_einnahmen_msz], y_label=chart_op_y_label, height=500)
+st.altair_chart(chart_cost_op)
+
+
+
+
 
 st.subheader('Bewertung')
 st.markdown('Aus den Investitionskosten und den durch die Solaranlage reduzierten Betriebskosten sowie den Einnahmen lassen sich nun wirtschaftliche Kenngrößen herleiten. Die Rendite der Investition gerechnet über 20 Jahre sieht wie folgt aus:')
+
+###### Calculate Economics ######
 
 payback = [0, 0, 0, 0]
 irr_percent = [0, 0, 0, 0]
