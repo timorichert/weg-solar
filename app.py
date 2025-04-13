@@ -23,6 +23,22 @@ st.set_page_config(
     page_icon="sunny"
 )
 
+alt.renderers.set_embed_options(format_locale="de-DE", time_format_locale="de-DE")
+
+#color_range = ['#001A4D', '#086579', '#169E76', '#2BBA4A', '#6AD045', '#A4E72E', '#FEFC17', '#FFAB00']
+# color_range = ["#002f61", "#005981", "#007f95", "#00a39c", "#00c693", "#3be675", "#a7f74d", "#ffff00"]
+#color_range = ["#dd8628", "#d4cd0d", "#edf1aa", "#ffffe0", "#c9e0cd", "#3b9ea0", "#001c70"]
+color_range = [
+    "#4A90E2",  # Sky Blue
+    "#f1c40f",  # Golden Yellow
+    "#003f5c",  # Navy Blue
+    "#b8860b",  # Dark Mustard
+    "#2f7a74",  # Teal
+    "#2ecc71",  # Emerald Green
+    "#ffb347",  # Amber
+    "#228B22"  # Forest Green
+]
+
 ###### FUNCTIONS ######
 
 def eigenverbrauch(capacity_kWp, power_consumption):
@@ -79,6 +95,35 @@ def one_dim_list(two_dim):
     one_dim_list = [n for one_dim in two_dim for n in one_dim]
     return one_dim_list
 
+def create_chart(data, metric, color, ylabel, height):
+    chart = (
+        alt.Chart(data)
+        .mark_bar()
+        .encode(
+            x=alt.X('Konzept:N', sort=[]),
+            y=alt.Y(metric + ':Q', sort=[], title=ylabel),
+            color=alt.Color(color + ":N", legend=alt.Legend(orient='bottom')).scale(range=color_range)
+        )
+    ).configure_axisX(
+        labelAngle=0,
+        labelLimit=200,
+        labelFontSize=12,
+        labelColor='black',
+        titleColor='black'
+    ).configure_axisY(
+        labelColor='black',
+        titleColor='black'
+    ).properties(
+        height=height
+    ).configure_legend(
+        columns=2,
+        labelColor='black',
+        titleColor='black'
+    )
+    #if (color != None):
+        # chart = alt.Chart(data).mark_bar().encode(color=alt.Color("Kategorie:N", legend=alt.Legend(orient='bottom')))
+
+    st.altair_chart(chart)
 
 ###### MAIN CONTENT ######
 st.title(':sunny: Solar für _Wohnungs-eigentümergemeinschaften_')
@@ -128,7 +173,7 @@ pv_production = capacity_kWp * specific_production # [kWh]
 einspeiseverguetung = [0, calc_einspeiseverguetung("VE", capacity_kWp), calc_einspeiseverguetung("UE", capacity_kWp), calc_einspeiseverguetung("UE", capacity_kWp)] # [EUR/kWh]
 # st.write(einspeiseverguetung)
 
-self_consumption_fraction = eigenverbrauch(capacity_kWp, power_consumption_total)
+self_consumption_fraction = round(eigenverbrauch(capacity_kWp, power_consumption_total), 3)
 power_consumption_self = pv_production * self_consumption_fraction
 autarkiegrad = power_consumption_self / power_consumption_total
 
@@ -154,7 +199,6 @@ Mehr Details zu diesen und weiteren Messkonzepten findet ihr auf dieser exzellen
 '''
 
 st.markdown(mk)
-
 st.header('Wirtschaftlichkeit', anchor='wirtschaftlichkeit')
 
 st.subheader('Investitionskosten')
@@ -198,26 +242,7 @@ chart_inv_data = pd.DataFrame({'Konzept': ['Ohne Solar', 'Ohne Solar', 'Ohne Sol
                                                cost_total, 1000, 2000,
                                                cost_total, 1000, 2000]})
 
-alt.renderers.set_embed_options(format_locale="de-DE", time_format_locale="de-DE")
-chart_inv = (
-   alt.Chart(chart_inv_data)
-   .mark_bar()
-   .encode(
-       x=alt.X('Konzept:N', sort=[]),
-       y=alt.Y('Kosten:Q', sort=[], title='Investitionskosten [EUR]'),
-       color=alt.Color("Kategorie:N", legend=alt.Legend(
-           orient='bottom'))
-   )
-).configure_axisX(
-    labelAngle=0,
-    labelLimit=200,
-    labelFontSize=12,
-).properties(
-    height=400
-)
-st.altair_chart(chart_inv)
-
-
+create_chart(chart_inv_data, 'Kosten', 'Kategorie', 'Investitionskosten [EUR]', 500)
 
 st.subheader('Betriebskosten und Einnahmen')
 md_op = '''Im Betrieb lassen sich Ausgaben und Einnahmen der Anlage wie folgt beschreiben:
@@ -227,7 +252,7 @@ md_op = '''Im Betrieb lassen sich Ausgaben und Einnahmen der Anlage wie folgt be
 - **Betrieb Zähler für Wohnungen und Allgemeinstrom** - Bei Mieterstrom bezahlt ihr separat für den Betrieb der Zähler, während diese Gebühr bei Volleinspeisung und GGV, wie auch ohne Anlage, in euren Stromlieferverträgen enthalten ist.
 - **Betrieb Zähler Solaranlage** - Die Solaranlage hat einen Einspeisezähler, der ebenfalls zu Buche schlägt.
 - **Einnahmen aus der Einspeisevergütung** - Für den eingespeisten Solarstrom bekommt ihr eine Einspeisevergütung. Diese [errechnet sich aus der Anlagengröße](https://www.finanztip.de/photovoltaik/einspeiseverguetung/). Bei GGV und Mieterstrom gibt es eine Einspeisevergütung von ''' + str(zahlenformat(einspeiseverguetung[2] * 100, 2)) + ''' ct/kWh. Bei der Volleinspeisung gibt es einen Zuschlag und ihr bekommt so ''' + str(zahlenformat(einspeiseverguetung[1] * 100, 2)) + ''' ct/kWh.
-- **Einnahmen aus Mieterstromzuschlag** - Beim Mieterstrom erhaltet für jede im Haus verbrauchte Kilowattstunde Solarstrom den Mieterstromzuschlag in Höhe von ca. 2,5 ct/kWh
+- **Einnahmen aus Mieterstromzuschlag** - Beim Mieterstrom erhaltet für jede im Haus verbrauchte Kilowattstunde Solarstrom den Mieterstromzuschlag in Höhe von ca. ''' + str(zahlenformat(mieterstromzuschlag[3] * 100, 2)) + ''' ct/kWh
 
 Im folgenden Diagramm sind eure voraussichtlichen jährlichen Ausgaben und - als negative Werte - Einnahmen dargestellt:
 '''
@@ -278,26 +303,10 @@ chart_op_data = pd.DataFrame({'Konzept': ['Ohne Solar', 'Ohne Solar', 'Ohne Sola
                                                   cat_op_meters, cat_op_solarmeter, cat_op_grundgebuehr, cat_reststrom, cat_op_anlagenbetrieb, cat_op_abrechnung, cat_op_einnahmen_esv, cat_op_einnahmen_msz],
                                     'Kosten': cost_op_array})
 
-chart_op = (
-   alt.Chart(chart_op_data)
-   .mark_bar()
-   .encode(
-       x=alt.X('Konzept:N', sort=[]),
-       y=alt.Y('Kosten:Q', sort=[], title='Betriebskosten [EUR/Jahr]'),
-       color=alt.Color("Kategorie:N", legend=alt.Legend(
-           orient='bottom'))
-   )
-).configure_axisX(
-    labelAngle=0,
-    labelLimit=200,
-    labelFontSize=12,
-).properties(
-    height=400
-)
-st.altair_chart(chart_op)
+create_chart(chart_op_data, 'Kosten', 'Kategorie', 'Betriebskosten [EUR/Jahr]', 500)
 
-st.subheader('Bewertung')
-st.markdown('Aus den Investitionskosten und den durch die Solaranlage reduzierten Betriebskosten sowie den Einnahmen lassen sich nun wirtschaftliche Kenngrößen herleiten.')
+st.subheader('Wirtschaftlichkeit')
+st.markdown('Aus den Investitionskosten und den durch die Solaranlage reduzierten Betriebskosten sowie den zusätzlichen Einnahmen lassen sich nun wirtschaftliche Kenngrößen herleiten.')
 
 ###### Calculate Economics ######
 
@@ -306,57 +315,31 @@ irr_percent = [0, 0, 0, 0]
 for i in range (1, 4):
     rel_investment_cost = cost_inv_total[i] - cost_inv_total[0]
     rel_operating_cost = cost_op_total[i] - cost_op_total[0]
-    payback[i] = - rel_investment_cost / rel_operating_cost
+    payback[i] = round(- rel_investment_cost / rel_operating_cost, 1)
 
     cashflow = [0] * 22
     cashflow[0] = -rel_investment_cost
     for a in range (1, 21 + 1):
         cashflow[a] = -rel_operating_cost
 
-    irr_percent[i] = npf.irr(cashflow) * 100
+    irr_percent[i] = round(npf.irr(cashflow) * 100, 1)
 
 ###### Bewertung - Rendite ######
 
 st.markdown('Die Rendite der Investition - gerechnet über 20 Jahre - sieht wie folgt aus:')
-
 chart_irr_data = pd.DataFrame({'Konzept': ['Ohne Solar','Volleinspeisung','Gemeinschaftliche Gebäudeversorgung','Mieterstrom'],
                                     'Rendite': irr_percent})
-chart_irr = (
-   alt.Chart(chart_irr_data)
-   .mark_bar()
-   .encode(
-       x=alt.X('Konzept:N', sort=[]),
-       y=alt.Y('Rendite:Q', sort=[], title='Rendite [%]')
-   )
-).configure_axisX(
-    labelAngle=0,
-    labelLimit=200,
-    labelFontSize=12,
-).properties(
-    height=300
-)
-st.altair_chart(chart_irr)
+create_chart(chart_irr_data, 'Rendite', 'Konzept', 'Rendite [%]', 300)
 
 ###### Bewertung - Amortisationsdauer ######
-
-st.markdown('Und wenn man Investition zu der Ersparnis an Betriebskosten ins Verhältnis setzt ergibt sich die Amortisationsdauer (ohne Abzinsung) wie folgt:')
+st.markdown('Und wenn man Investition zu der Ersparnis an Betriebskosten und Einnahmen ins Verhältnis setzt ergibt sich die Amortisationsdauer (ohne Abzinsung) wie folgt:')
 chart_payback_data = pd.DataFrame({'Konzept': ['Ohne Solar','Volleinspeisung','Gemeinschaftliche Gebäudeversorgung','Mieterstrom'],
-                                    'Rendite': payback})
-chart_payback = (
-   alt.Chart(chart_payback_data)
-   .mark_bar()
-   .encode(
-       x=alt.X('Konzept:N', sort=[]),
-       y=alt.Y('Rendite:Q', sort=[], title='Amortisationsdauer [Jahre]')
-   )
-).configure_axisX(
-    labelAngle=0,
-    labelLimit=200,
-    labelFontSize=12,
-).properties(
-    height=300
-)
-st.altair_chart(chart_payback)
+                                    'Amortisationsdauer': payback})
+create_chart(chart_payback_data, 'Amortisationsdauer', 'Konzept', 'Amortisationsdauer [Jahre]', 300)
+
+
+
+###### Umsetzung ######
 
 st.header('Wie setzt ihr es um?', anchor='umsetzung')
 
@@ -365,6 +348,6 @@ st.markdown('**Weitere Infos zur Beschlussfassung in der WEG und zur Umsetzung f
 st.divider()
 
 md_footer = '''
-_Created with :heart:  in Köln-Zollstock using [Streamlit](https://streamlit.io/). Code: https://github.com/timorichert/weg-solar. Copyright 2025._
+_Created with :heart:  in Köln-Zollstock using [Streamlit](https://streamlit.io/). App hosted at [Heroku](https://www.heroku.com/). The code is available at [Github/timorichert/weg-solar](https://github.com/timorichert/weg-solar). Copyright 2025._
 '''
 st.markdown(md_footer)
