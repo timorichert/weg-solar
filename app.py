@@ -21,14 +21,14 @@ st.warning('_:warning: :red[**ACHTUNG!** Dies ist aktuell nur ein Prototyp mit b
 st.header('Euer Haus', anchor='haus')
 st.markdown('Macht hier Angaben zum Ist-Zustand eures Hauses.')
 
-number_apartments = st.number_input('Anzahl der Wohnungen:', min_value=0, max_value=50, value=14, key='we')
+number_apartments_total = st.number_input('Anzahl der Wohnungen:', min_value=0, max_value=50, value=14, key='we')
 power_consumption_per_apartment = st.number_input('Stromverbrauch pro Wohnung im Jahr [kWh] (im Schnitt könnt ihr im Mehrfamilienhaus von ca. 2500 kWh/Jahr pro Haushalt ausgehen. Singles natürlich weniger, Familien mehr.)', min_value=0, max_value=10000, value=2500, key='stromverbrauch')
-number_meters = number_apartments + 1
+number_meters = number_apartments_total + 1
 
 power_price = st.number_input('Mittlerer Strompreis (inkl. Steuern) mit eurem Stromversorgungsvertrag [ct/kWh]:', min_value=20, max_value=40, value=32, key='power_price')
 power_base_price = st.number_input('Mittlere monatliche Grundgebühr (inkl. Steuern) pro Wohnung für eure Stromversorgungsverträge [EUR/Monat]:', min_value=10, max_value=30, value=20, key='power_base_price')
 
-power_consumption_total = number_apartments * power_consumption_per_apartment * 1.1 # [kWh]
+power_consumption_total = number_apartments_total * power_consumption_per_apartment * 1.1 # [kWh]
 cost_power_annual = power_consumption_total * power_price / 100 + 12 * number_meters * power_base_price
 
 st.write('Ihr verbraucht in eurem Haus ca. __' + str(fn.zahlenformat(power_consumption_total, 0)) + ' kWh__ Strom pro Jahr (inklusive zusätzlich ca. 10% für den Allgemeinstrom). Dafür bezahlt ihr mit Grundgebühren und Arbeitspreis __ca. ' + str(fn.zahlenformat(cost_power_annual, 0)) + ' EUR__ im Jahr.')
@@ -51,36 +51,52 @@ pv_production = capacity_kWp * cfg.specific_production # [kWh]
 einspeiseverguetung = [0, fn.calc_einspeiseverguetung("VE", capacity_kWp), fn.calc_einspeiseverguetung("UE", capacity_kWp), fn.calc_einspeiseverguetung("UE", capacity_kWp)] # [EUR/kWh]
 # st.write(einspeiseverguetung)
 
-self_consumption_fraction = round(fn.eigenverbrauch(capacity_kWp, power_consumption_total), 3)
-power_consumption_self = pv_production * self_consumption_fraction
-autarkiegrad = power_consumption_self / power_consumption_total
+# Self consumption balance max
+self_consumption_fraction_max = round(fn.eigenverbrauch(capacity_kWp, power_consumption_total), 3)
+power_consumption_self_max = pv_production * self_consumption_fraction_max
+autarkiegrad_max = power_consumption_self_max / power_consumption_total
+einspeisung_eigenverbrauch_max = pv_production - power_consumption_self_max
 
-einspeisung_eigenverbrauch = pv_production - power_consumption_self
 einspeisung_voll = pv_production
 
-power_consumption_reststrom = power_consumption_total - power_consumption_self
+
 
 st.write('Die Solaranlage kostet euch __' + str(fn.zahlenformat(cost_inv_pv, 0)) + ' EUR__ und  wird __ca. ' + str(fn.zahlenformat(pv_production, 0)) + ' kWh__ Strom pro Jahr produzieren.')
-st.write('Bei eurem Jahresverbrauch werdet ihr davon ca. __' + str(fn.zahlenformat(self_consumption_fraction*100, 0)) + '% selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(fn.zahlenformat(power_consumption_self, 0)) + ' kWh pro Jahr. __Damit deckt ihr euren jährlichen Gesamtbedarf zu ca. ' + str(fn.zahlenformat(autarkiegrad * 100, 0)) + '%__ ("Autkariegrad"). Den restlichen Solarstrom, also ' + str(fn.zahlenformat(einspeisung_eigenverbrauch, 0)) + ' kWh, speist ihr in das Stromnetz ein.')
+st.write('Bei eurem Jahresverbrauch werdet ihr davon ca. __' + str(fn.zahlenformat(self_consumption_fraction_max * 100, 0)) + '% selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(fn.zahlenformat(power_consumption_self_max, 0)) + ' kWh pro Jahr. __Damit deckt ihr euren jährlichen Gesamtbedarf zu ca. ' + str(fn.zahlenformat(autarkiegrad_max * 100, 0)) + '%__ ("Autkariegrad"). Den restlichen Solarstrom, also ' + str(fn.zahlenformat(einspeisung_eigenverbrauch_max, 0)) + ' kWh, speist ihr in das Stromnetz ein.')
 st.write('(Die Errechnung des Eigenverbrauchs basiert auf den Methoden des [Solarrechners](https://solar.htw-berlin.de/rechner/) der [Hochschule für Technik und Wirtschaft Berlin](https://www.htw-berlin.de/))')
 
 st.header('Nutzung des Solarstroms im Haus', anchor='nutzung')
-
-mk = '''
-Es gibt verschiedene Arten, den Strom im Haus zu nutzen. Die Nutzungsarten laufen unter dem Fachbegriff "Messkonzepte" und die drei interessantesten Ausprägungen sind:
-- **Volleinspeisung** - Der Strom wird bilanziell komplett ins Stromnetz eingespeist und daher gibt es nur einen Einspeisezähler an der PV-Anlage. Für den eingespeisten Strom erhaltet ihr eine Einspeisevergütung. Ihr bezieht weiterhin den Strom für die Wohnungen von euren Stromversorgern.
-- **Gemeinschaftliche Gebäudeversorgung** (GGV) - Jede Wohnung wird mit einem  ["intelligenten Messsystem" bzw. iMsys](https://www.bundesnetzagentur.de/DE/Vportal/Energie/Metering/start.html) ausgestattet (landläufig auch Smart Meter genannt). Hiermit kann euer Stromverbrauch in viertelstundengenauer Auflösung gemessen werden. Mit Hilfe eines Abrechnungsdienstleisters, der diese Solarstrommengen den teilnehmenden Haushalten zurechnet, kann der Solarstrom nun den Wohnungen zugeteilt werden. Gesetzlich geregelt wird die erst seit Mitte 2024 rechtskräftige GGV durch [EnWG §42b](https://www.gesetze-im-internet.de/enwg_2005/__42a.html).
-- **Mieterstrom** - Bei diesem Konzept kann der Strom ebenfalls in den Wohnungen genutzt werden, und trotz des Begriffs "Mieterstrom" kann dieses Konzept auch für WEGs sehr sinnvoll sein. Im Gegensatz zur GGV, bei dem alle Solarstromnutzer ihre bisherigen Stromlieferverträge behalten, schließt nun ihr als WEG die Stromlieferverträge mit den Hausbewohnern ab. Auch für dieses Konzept braucht es die richtige Messtechnik. Traditionell wurde das Konzept häufig mit einem "physikalischen Summenzähler" umgesetzt, also mit einer aufwändigen Messung des Hausstromes am Hausanschluss. Mittlerweile etabliert sich aber mehr und mehr der ["virtuelle Summenzähler"](https://www.sfv.de/5-fragen-virtueller-summenzaehler), der wie auch die GGV auf iMsys basiert. Mieterstrom ist im [EnWG §42a](https://www.gesetze-im-internet.de/enwg_2005/__42a.html) reguliert.
-
-Mehr Details zu diesen und weiteren Messkonzepten findet ihr auf dieser exzellenten :heart: Website der [Energieagentur Regio Freiburg](https://energieagentur-regio-freiburg.eu/): https://energieagentur-regio-freiburg.eu/pv-mehrparteienhaus/. Im Folgenden möchten wir uns aber noch nicht in Details verfangen, sondern die drei Konzept mal direkt vergleichen! :muscle:
-
-'''
+st.subheader('Überblick')
+mk = '''Es gibt verschiedene Arten, den Strom im Haus zu nutzen. Die Nutzungsarten laufen unter dem Fachbegriff "Messkonzepte" und die drei interessantesten Ausprägungen sind:
+* **Volleinspeisung** - Der Strom wird bilanziell komplett ins Stromnetz eingespeist und daher gibt es nur einen Einspeisezähler an der PV-Anlage. Für den eingespeisten Strom erhaltet ihr eine Einspeisevergütung. Ihr bezieht weiterhin den Strom für die Wohnungen von euren Stromversorgern.
+* **Gemeinschaftliche Gebäudeversorgung** (GGV) - Jede Wohnung wird mit einem  ["intelligenten Messsystem" bzw. iMsys](https://www.bundesnetzagentur.de/DE/Vportal/Energie/Metering/start.html) ausgestattet (landläufig auch Smart Meter genannt). Hiermit kann euer Stromverbrauch in viertelstundengenauer Auflösung gemessen werden. Mit Hilfe eines Abrechnungsdienstleisters, der diese Solarstrommengen den teilnehmenden Haushalten zurechnet, kann der Solarstrom nun den Wohnungen zugeteilt werden. Gesetzlich geregelt wird die erst seit Mitte 2024 rechtskräftige GGV durch [EnWG §42b](https://www.gesetze-im-internet.de/enwg_2005/__42a.html).
+* **Mieterstrom** - Bei diesem Konzept kann der Strom ebenfalls in den Wohnungen genutzt werden, und trotz des Begriffs "Mieterstrom" kann dieses Konzept auch für WEGs sehr sinnvoll sein. Im Gegensatz zur GGV, bei dem alle Solarstromnutzer ihre bisherigen Stromlieferverträge behalten, schließt nun ihr als WEG die Stromlieferverträge mit den Hausbewohnern ab. Auch für dieses Konzept braucht es die richtige Messtechnik. Traditionell wurde das Konzept häufig mit einem "physikalischen Summenzähler" umgesetzt, also mit einer aufwändigen Messung des Hausstromes am Hausanschluss. Mittlerweile etabliert sich aber mehr und mehr der ["virtuelle Summenzähler"](https://www.sfv.de/5-fragen-virtueller-summenzaehler), der wie auch die GGV auf iMsys basiert. Mieterstrom ist im [EnWG §42a](https://www.gesetze-im-internet.de/enwg_2005/__42a.html) reguliert.'''
 
 st.markdown(mk)
+st.markdown('Mehr Details zu diesen und weiteren Messkonzepten findet ihr auf dieser exzellenten :heart: Website der [Energieagentur Regio Freiburg](https://energieagentur-regio-freiburg.eu/): https://energieagentur-regio-freiburg.eu/pv-mehrparteienhaus/. Im Folgenden möchten wir uns aber noch nicht in Details verfangen, sondern die drei Konzept mal direkt vergleichen! :muscle:')
+
+st.subheader('Wichtige Aspekte der Eigenverbrauchsmodelle')
+st.markdown('Ein wichtige Kenngröße, um die Wirtschaftlichkeit des Konzeptes zu bewerten, ist die Anzahl derer, die an der Stromversorgung durch GGV oder Mieterstrom teilnehmen. Grundsätzlich gilt in Deutschland, dass Jeder Bewohner seinen Stromversorger frei wählen kann. Beim Mieterstrom kann der Solarstrom jedoch deutlich günstiger Angeboten werden als der Netzstrom, womit eine Teilnehme attraktiv und die Teilnehmerquote typischerweise recht hoch ist. Dies gilt umso mehr für WEGs mit vielen durch Eigentümer bewohnte Wohneinheiten.')
+participant_quota_target = st.number_input('Teilnehmerquote [%] (bei Mieterstrom typischerweise zwischen 70% und 90%)', min_value=0, max_value=100, value=80, key='participant_quota')
+
+# Self consumption balance actual
+no_participants = round(number_apartments_total * participant_quota_target / 100) + 1 # +1 for Allgemeinstrom
+non_participants = number_apartments_total + 1 - no_participants
+participant_quota = no_participants / number_apartments_total
+power_consumption_participants = participant_quota * power_consumption_total
+self_consumption_fraction = round(fn.eigenverbrauch(capacity_kWp, power_consumption_participants), 3)
+power_consumption_self = pv_production * self_consumption_fraction
+autarkiegrad = power_consumption_self / power_consumption_total
+einspeisung_eigenverbrauch = pv_production - power_consumption_self
+power_consumption_reststrom = power_consumption_total - power_consumption_self
+
+st.write('Mit __' + str(no_participants) + '__ Teilnehmern (inkl. Allgemeinstrom) werdet ihr ca. __' + str(fn.zahlenformat(self_consumption_fraction * 100, 0)) + '% des Solarstroms selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(fn.zahlenformat(power_consumption_self, 0)) + ' kWh pro Jahr. __Damit deckt ihr jährlichen Gesamtbedarf der Teilnehmer zu ca. ' + str(fn.zahlenformat(autarkiegrad * 100, 0)) + '%__ ("Autkariegrad"). Den restlichen Solarstrom, also ' + str(fn.zahlenformat(einspeisung_eigenverbrauch, 0)) + ' kWh, speist ihr in das Stromnetz ein.')
+
+
 st.header('Kosten und Wirtschaftlichkeit', anchor='wirtschaftlichkeit')
 
 st.subheader('Investitionskosten')
-md_investment = '''Die Umsezung der einzelnen Konzepte ist mit den folgenden  Kosten verbunden:
+md_investment = '''Die Umsetzung der einzelnen Konzepte ist mit den folgenden  Kosten verbunden:
 
 - **Bau Solaranlage** - Dies umfasst Material und Installation der Solarmodule inklusive Befestigungsmitteln, Wechselrichter, Verkabelung, Anschluss an das Zählerfeld und Inbetriebnahme und Anmeldung der Anlage. Der Bau der Anlage wird als einzelner Auftrag an einen von euch gewählten Fachbetrieb vergeben.
 - **Umsetzung Messkonzept** - Dies umfasst den Einbau bzw. den Umbau der Zähler. Das Messkonzept kann durch einen wettbewerblichen (wMSB) oder aber durch euren grundzuständigen (gMSB) Messstellenbetreiber umgesetzt werden. Der gMSB stellt für ein [vorzeitige](## "as") Umrüstung auf ein Smart Meter bis zu 100 EUR pro Zähler in Rechnung. Dies ist der maximal zulässige Betrag gemäß Solarspitzengesetz und hier unsere Annahme. In unserem Beispiel gehen von der Realisierung eines virtuellen Summenzählers über den gMSB aus, der den Zählertausch organisiert.
@@ -141,14 +157,14 @@ st.markdown('Im folgenden Diagramm sind eure voraussichtlichen jährlichen Ausga
 cost_op = x = [[0 for i in range(10)] for j in range(10)]
 
 cat_op_meters = "Betrieb Zähler (Wohnung + Allgemeinstrom)"
-cost_op_meters = [0, 0, 0, 60 * number_meters]
+cost_op_meters = [0, 0, 0, 60 * no_participants]
 
 cat_op_solarmeter = "Betrieb Zähler Solaranlage"
 cost_op_solarmeter = [0, 100, 100, 100]
 
 cat_op_grundgebuehr = "Grundgebühren Stromlieferverträge"
 cost_op_grundgebuehr = [12 * power_base_price * number_meters, 12 * power_base_price * number_meters,
-                        12 * power_base_price * number_meters, 12 * power_base_price * 1]
+                        12 * power_base_price * number_meters, 12 * power_base_price * (1 + non_participants)]
 
 cat_reststrom = "Einkauf Netzstrom/Reststrom"
 cost_op_reststrom = [power_consumption_total * power_price / 100, power_consumption_total * power_price / 100,
@@ -158,7 +174,8 @@ cat_op_anlagenbetrieb = "Betrieb Solaranlage"
 cost_op_anlagenbetrieb = np.multiply(cost_inv_total, cfg.operating_cost_fraction).tolist()
 
 cat_op_abrechnung = "Abrechnungsdienstleister"
-cost_op_abrechnung = [0, 0, 5 * 12 * number_meters, 5 * 12 * number_meters]
+cost_op_abrechnung_specific = 5
+cost_op_abrechnung = [0, 0, cost_op_abrechnung_specific * 12 * no_participants, cost_op_abrechnung_specific * 12 * no_participants]
 
 cat_op_einnahmen_esv = "Einspeisevergütung"
 einspeisung = [0, -einspeisung_voll, -einspeisung_eigenverbrauch, -einspeisung_eigenverbrauch]
