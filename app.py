@@ -85,7 +85,7 @@ non_participants = number_apartments_total - no_participants
 power_consumption_participants = no_participants * power_consumption_per_apartment + power_consumption_common
 self_consumption_fraction = round(fn.eigenverbrauch(capacity_kWp, power_consumption_participants), 3)
 power_consumption_self = pv_production * self_consumption_fraction
-autarkiegrad = power_consumption_self / power_consumption_total
+autarkiegrad = power_consumption_self / power_consumption_participants
 einspeisung_eigenverbrauch = pv_production - power_consumption_self
 power_consumption_reststrom = power_consumption_total - power_consumption_self
 
@@ -243,6 +243,6 @@ st.markdown('**Weitere Infos zur Beschlussfassung in der WEG und zur Umsetzung f
 st.divider()
 
 md_footer = '''
-_Created with :heart:  in Köln-Zollstock using [Streamlit](https://streamlit.io/). App hosted at [Heroku](https://www.heroku.com/). The code is available at [Github/timorichert/weg-solar](https://github.com/timorichert/weg-solar). Copyright 2025._
+_Created with :heart:  in Köln-Zollstock using [Streamlit](https://streamlit.io/). The code is available at [https://github.com/timorichert/weg-solar](https://github.com/timorichert/weg-solar). Copyright 2025._
 '''
 st.markdown(md_footer)
