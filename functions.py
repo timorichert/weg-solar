@@ -8,13 +8,29 @@ alt.renderers.set_embed_options(format_locale="de-DE", time_format_locale="de-DE
 
 def eigenverbrauch(capacity_kWp, power_consumption):
     # Polynom EV, abgeleitet aus HTW-Rechner:
+    # v01
     # y = 0.1411x6 - 1.0872x5 + 3.3682x4 - 5.4162x3 + 4.9424x2 - 2.7492x + 1.1003  / R^2 = 1
     # y = Eigenverbrauchsanteil / x = Größe PV-Anlage relativ zu Anlagengröße [Wp/kWh] / Polynom nur definiert für x = 0 bis 2
+    # v02
+    # y = 0.0085x6 - 0.1175x5 + 0.6429x4 - 1.7748x3 + 2.6424x2 - 2.171x + 1.0695 / R^2 = 0.9988
+    # y = Eigenverbrauchsanteil / x = Größe PV-Anlage relativ zu Anlagengröße [Wp/kWh] / Polynom nur definiert für x = 0 bis 4
+
+    c6 = 0.0085
+    c5 = -0.1175
+    c4 = 0.6429
+    c3 = -1.7748
+    c2 = 2.6424
+    c1 = -2.171
+    c0 = 1.0695
     x = capacity_kWp * 10**3 / power_consumption
-    if (x == 0) or (x > 2):
+    if (x == 0):
         y = 0
+    elif (x > 4):
+        y = 0.10
+    elif (x < 0.1):
+        y = 0.89
     else:
-        y = 0.1411*x**6 - 1.0872*x**5 + 3.3682*x**4 - 5.4162*x**3 + 4.9424*x**2 - 2.7492*x + 1.1003
+        y = c6*x**6 + c5*x**5 + c4*x**4 + c3*x**3 + c2*x**2 + c1*x + c0
     return y
 
 def warnung(text):

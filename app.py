@@ -23,12 +23,14 @@ st.markdown('Macht hier Angaben zum Ist-Zustand eures Hauses.')
 
 number_apartments_total = st.number_input('Anzahl der Wohnungen:', min_value=0, max_value=50, value=14, key='we')
 power_consumption_per_apartment = st.number_input('Stromverbrauch pro Wohnung im Jahr [kWh] (im Schnitt könnt ihr im Mehrfamilienhaus von ca. 2500 kWh/Jahr pro Haushalt ausgehen. Singles natürlich weniger, Familien mehr.)', min_value=0, max_value=10000, value=2500, key='stromverbrauch')
+power_consumption_common = st.number_input('Stromverbrauch Allgemeinstrom im Jahr [kWh]', min_value=0, max_value=20000, value=3000, key='stromverbrauch_allgemein')
 number_meters = number_apartments_total + 1
+number_contracts_baseline = number_apartments_total + 1
 
 power_price = st.number_input('Mittlerer Strompreis (inkl. Steuern) mit eurem Stromversorgungsvertrag [ct/kWh]:', min_value=20, max_value=40, value=32, key='power_price')
 power_base_price = st.number_input('Mittlere monatliche Grundgebühr (inkl. Steuern) pro Wohnung für eure Stromversorgungsverträge [EUR/Monat]:', min_value=10, max_value=30, value=20, key='power_base_price')
 
-power_consumption_total = number_apartments_total * power_consumption_per_apartment * 1.1 # [kWh]
+power_consumption_total = number_apartments_total * power_consumption_per_apartment + power_consumption_common # [kWh]
 cost_power_annual = power_consumption_total * power_price / 100 + 12 * number_meters * power_base_price
 
 st.write('Ihr verbraucht in eurem Haus ca. __' + str(fn.zahlenformat(power_consumption_total, 0)) + ' kWh__ Strom pro Jahr (inklusive zusätzlich ca. 10% für den Allgemeinstrom). Dafür bezahlt ihr mit Grundgebühren und Arbeitspreis __ca. ' + str(fn.zahlenformat(cost_power_annual, 0)) + ' EUR__ im Jahr.')
@@ -55,14 +57,12 @@ einspeiseverguetung = [0, fn.calc_einspeiseverguetung("VE", capacity_kWp), fn.ca
 self_consumption_fraction_max = round(fn.eigenverbrauch(capacity_kWp, power_consumption_total), 3)
 power_consumption_self_max = pv_production * self_consumption_fraction_max
 autarkiegrad_max = power_consumption_self_max / power_consumption_total
-einspeisung_eigenverbrauch_max = pv_production - power_consumption_self_max
+einspeisung_ev_max = pv_production - power_consumption_self_max
 
-einspeisung_voll = pv_production
-
-
+einspeisung_ve = pv_production
 
 st.write('Die Solaranlage kostet euch __' + str(fn.zahlenformat(cost_inv_pv, 0)) + ' EUR__ und  wird __ca. ' + str(fn.zahlenformat(pv_production, 0)) + ' kWh__ Strom pro Jahr produzieren.')
-st.write('Bei eurem Jahresverbrauch werdet ihr davon ca. __' + str(fn.zahlenformat(self_consumption_fraction_max * 100, 0)) + '% selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(fn.zahlenformat(power_consumption_self_max, 0)) + ' kWh pro Jahr. __Damit deckt ihr euren jährlichen Gesamtbedarf zu ca. ' + str(fn.zahlenformat(autarkiegrad_max * 100, 0)) + '%__ ("Autkariegrad"). Den restlichen Solarstrom, also ' + str(fn.zahlenformat(einspeisung_eigenverbrauch_max, 0)) + ' kWh, speist ihr in das Stromnetz ein.')
+st.write('Bei eurem Jahresverbrauch werdet ihr davon ca. __' + str(fn.zahlenformat(self_consumption_fraction_max * 100, 0)) + '% im Haus selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(fn.zahlenformat(power_consumption_self_max, 0)) + ' kWh pro Jahr. __Damit deckt ihr den jährlichen Gesamtbedarf des Hauses zu ca. ' + str(fn.zahlenformat(autarkiegrad_max * 100, 0)) + '%__ ("Autarkiegrad"). Den restlichen Solarstrom, also ' + str(fn.zahlenformat(einspeisung_ev_max, 0)) + ' kWh, speist ihr in das Stromnetz ein.')
 st.write('(Die Errechnung des Eigenverbrauchs basiert auf den Methoden des [Solarrechners](https://solar.htw-berlin.de/rechner/) der [Hochschule für Technik und Wirtschaft Berlin](https://www.htw-berlin.de/))')
 
 st.header('Nutzung des Solarstroms im Haus', anchor='nutzung')
@@ -80,17 +80,16 @@ st.markdown('Ein wichtige Kenngröße, um die Wirtschaftlichkeit des Konzeptes z
 participant_quota_target = st.number_input('Teilnehmerquote [%] (bei Mieterstrom typischerweise zwischen 70% und 90%)', min_value=0, max_value=100, value=80, key='participant_quota')
 
 # Self consumption balance actual
-no_participants = round(number_apartments_total * participant_quota_target / 100) + 1 # +1 for Allgemeinstrom
-non_participants = number_apartments_total + 1 - no_participants
-participant_quota = no_participants / number_apartments_total
-power_consumption_participants = participant_quota * power_consumption_total
+no_participants = round(number_apartments_total * participant_quota_target / 100) # +1 for Allgemeinstrom
+non_participants = number_apartments_total - no_participants
+power_consumption_participants = no_participants * power_consumption_per_apartment + power_consumption_common
 self_consumption_fraction = round(fn.eigenverbrauch(capacity_kWp, power_consumption_participants), 3)
 power_consumption_self = pv_production * self_consumption_fraction
 autarkiegrad = power_consumption_self / power_consumption_total
 einspeisung_eigenverbrauch = pv_production - power_consumption_self
 power_consumption_reststrom = power_consumption_total - power_consumption_self
 
-st.write('Mit __' + str(no_participants) + '__ Teilnehmern (inkl. Allgemeinstrom) werdet ihr ca. __' + str(fn.zahlenformat(self_consumption_fraction * 100, 0)) + '% des Solarstroms selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(fn.zahlenformat(power_consumption_self, 0)) + ' kWh pro Jahr. __Damit deckt ihr jährlichen Gesamtbedarf der Teilnehmer zu ca. ' + str(fn.zahlenformat(autarkiegrad * 100, 0)) + '%__ ("Autkariegrad"). Den restlichen Solarstrom, also ' + str(fn.zahlenformat(einspeisung_eigenverbrauch, 0)) + ' kWh, speist ihr in das Stromnetz ein.')
+st.write('Mit __' + str(no_participants) + '__ teilnehmenden Wohnungen und dem Allgemeinstrom werdet ihr ca. __' + str(fn.zahlenformat(self_consumption_fraction * 100, 0)) + '% des Solarstroms selbst verbrauchen__ ("Eigenverbrauchsquote"), also ca. ' + str(fn.zahlenformat(power_consumption_self, 0)) + ' kWh pro Jahr. __Damit deckt ihr den jährlichen Gesamtbedarf der Teilnehmer zu ca. ' + str(fn.zahlenformat(autarkiegrad * 100, 0)) + '%__ ("Autarkiegrad"). Den restlichen Solarstrom, also ' + str(fn.zahlenformat(einspeisung_eigenverbrauch, 0)) + ' kWh, speist ihr in das Stromnetz ein.')
 
 
 st.header('Kosten und Wirtschaftlichkeit', anchor='wirtschaftlichkeit')
@@ -178,7 +177,7 @@ cost_op_abrechnung_specific = 5
 cost_op_abrechnung = [0, 0, cost_op_abrechnung_specific * 12 * no_participants, cost_op_abrechnung_specific * 12 * no_participants]
 
 cat_op_einnahmen_esv = "Einspeisevergütung"
-einspeisung = [0, -einspeisung_voll, -einspeisung_eigenverbrauch, -einspeisung_eigenverbrauch]
+einspeisung = [0, -einspeisung_ve, -einspeisung_eigenverbrauch, -einspeisung_eigenverbrauch]
 cost_op_einnahmen_esv = np.multiply(einspeisung, einspeiseverguetung).tolist()
 
 cat_op_einnahmen_msz = "Mieterstromzuschlag"
